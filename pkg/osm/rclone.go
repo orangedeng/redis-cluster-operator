@@ -77,13 +77,13 @@ provider = Ceph
 env_auth = false
 access_key_id = %s
 secret_access_key = %s
-region =
+region = %s
 endpoint = %s
 location_constraint =
 acl =
 server_side_encryption =
 storage_class =
-`, provider, keyID, key, spec.S3.Endpoint)
+`, provider, keyID, key, spec.S3.Region, spec.S3.Endpoint)
 }
 
 func localContext(provider string) string {

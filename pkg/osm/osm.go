@@ -90,32 +90,37 @@ func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*o
 		} else {
 			nc.Config[s3.ConfigAuthType] = "iam"
 		}
-		if spec.S3.Endpoint == "" || strings.HasSuffix(spec.S3.Endpoint, ".amazonaws.com") {
+		if spec.S3.Endpoint == "" || strings.Contains(spec.S3.Endpoint, ".amazonaws.com") {
 			// Using s3 and not s3-compatible service like minio or rook, etc. Now, find region
 			var sess *session.Session
 			var err error
+			var awsConfig aws.Config
+			if spec.S3.Endpoint != "" {
+				awsConfig.Endpoint = &spec.S3.Endpoint
+			}
+
+			region := stringz.Val(spec.S3.Region, "us-east-1")
+
 			if nc.Config[s3.ConfigAuthType] == "iam" {
 				// The aws sdk does not currently support automatically setting the region based on an instances placement.
 				// This automatically sets region based on ec2 instance metadata when running on EC2.
 				// ref: https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/setting-region.html#setting-region-order-of-precedence
-				var c aws.Config
 				if s, e := session.NewSession(); e == nil {
 					if region, e := ec2metadata.New(s).Region(); e == nil {
-						c.WithRegion(region)
+						awsConfig.WithRegion(region)
 					}
 				}
 				sess, err = session.NewSessionWithOptions(session.Options{
-					Config: c,
+					Config: awsConfig,
 					// Support MFA when authing using assumed roles.
 					SharedConfigState:       session.SharedConfigEnable,
 					AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
 				})
 			} else {
+				awsConfig.Credentials = credentials.NewStaticCredentials(string(keyID), string(key), "")
+				awsConfig.Region = aws.String(region)
 				sess, err = session.NewSessionWithOptions(session.Options{
-					Config: aws.Config{
-						Credentials: credentials.NewStaticCredentials(string(keyID), string(key), ""),
-						Region:      aws.String("us-east-1"),
-					},
+					Config: awsConfig,
 					// Support MFA when authing using assumed roles.
 					SharedConfigState:       session.SharedConfigEnable,
 					AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
@@ -131,7 +136,11 @@ func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*o
 			if err != nil {
 				return nil, err
 			}
-			nc.Config[s3.ConfigRegion] = stringz.Val(types.String(out.LocationConstraint), "us-east-1")
+
+			if spec.S3.Endpoint != ""{
+				nc.Config[s3.ConfigEndpoint] = spec.S3.Endpoint
+			}
+			nc.Config[s3.ConfigRegion] = stringz.Val(types.String(out.LocationConstraint), region)
 		} else {
 			nc.Config[s3.ConfigEndpoint] = spec.S3.Endpoint
 			u, err := url.Parse(spec.S3.Endpoint)
