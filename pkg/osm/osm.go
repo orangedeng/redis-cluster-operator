@@ -11,6 +11,7 @@ import (
 	googconst "kmodules.xyz/constants/google"
 	osconst "kmodules.xyz/constants/openstack"
 
+	"github.com/go-logr/logr"
 	stringz "github.com/appscode/go/strings"
 	"github.com/appscode/go/types"
 	otx "github.com/appscode/osm/context"
@@ -38,27 +39,35 @@ const (
 	CaCertFileName  = "ca.crt"
 )
 
-func CheckBucketAccess(client client.Client, spec api.Backend, namespace string) error {
-	cfg, err := NewOSMContext(client, spec, namespace)
+func CheckBucketAccess(client client.Client, spec api.Backend, namespace string, logger logr.Logger) error {
+	logger.V(4).Info("calling CheckBucketAccess")
+
+	cfg, err := NewOSMContext(client, spec, namespace, logger)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to create osm context")
 	}
 	loc, err := stow.Dial(cfg.Provider, cfg.Config)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to dail backend provider %s", cfg.Provider)
 	}
 	bucket, err := spec.Container()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get bucket from backend")
 	}
 	c, err := loc.Container(bucket)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to get bucket from bucket id")
 	}
-	return c.HasWriteAccess()
+	if err := c.HasWriteAccess(); err != nil {
+		return errors.Wrapf(err, "failed to check write access for bucket")
+	}
+
+	return nil
 }
 
-func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*otx.Context, error) {
+func NewOSMContext(client client.Client, spec api.Backend, namespace string, logger logr.Logger) (*otx.Context, error) {
+	logger.V(4).Info("calling NewOSMContext", "backend", spec)
+
 	config := make(map[string][]byte)
 
 	if spec.StorageSecretName != "" {
@@ -68,7 +77,7 @@ func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*o
 			Namespace: namespace,
 		}, secret)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err,"failed to get secret %s/%s for osm", namespace, spec.StorageSecretName)
 		}
 		config = secret.Data
 	}
@@ -79,6 +88,8 @@ func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*o
 	}
 
 	if spec.S3 != nil {
+		logger.V(4).Info("using s3 backend")
+
 		nc.Provider = s3.Kind
 
 		keyID, foundKeyID := config[awsconst.AWS_ACCESS_KEY_ID]
@@ -91,6 +102,7 @@ func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*o
 			nc.Config[s3.ConfigAuthType] = "iam"
 		}
 		if spec.S3.Endpoint == "" || strings.Contains(spec.S3.Endpoint, ".amazonaws.com") {
+			logger.V(4).Info("using aws s3")
 			// Using s3 and not s3-compatible service like minio or rook, etc. Now, find region
 			var sess *session.Session
 			var err error
@@ -142,6 +154,8 @@ func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*o
 			}
 			nc.Config[s3.ConfigRegion] = stringz.Val(types.String(out.LocationConstraint), region)
 		} else {
+			logger.V(4).Info("using s3-compatible service")
+
 			nc.Config[s3.ConfigEndpoint] = spec.S3.Endpoint
 			u, err := url.Parse(spec.S3.Endpoint)
 			if err != nil {
@@ -156,20 +170,28 @@ func NewOSMContext(client client.Client, spec api.Backend, namespace string) (*o
 		}
 		return nc, nil
 	} else if spec.GCS != nil {
+		logger.V(4).Info("using GCS backend")
+
 		nc.Provider = gcs.Kind
 		nc.Config[gcs.ConfigProjectId] = string(config[googconst.GOOGLE_PROJECT_ID])
 		nc.Config[gcs.ConfigJSON] = string(config[googconst.GOOGLE_SERVICE_ACCOUNT_JSON_KEY])
 		return nc, nil
 	} else if spec.Azure != nil {
+		logger.V(4).Info("using Azure backend")
+
 		nc.Provider = azure.Kind
 		nc.Config[azure.ConfigAccount] = string(config[azconst.AZURE_ACCOUNT_NAME])
 		nc.Config[azure.ConfigKey] = string(config[azconst.AZURE_ACCOUNT_KEY])
 		return nc, nil
 	} else if spec.Local != nil {
+		logger.V(4).Info("using local backend")
+
 		nc.Provider = local.Kind
 		nc.Config[local.ConfigKeyPath] = spec.Local.MountPath
 		return nc, nil
 	} else if spec.Swift != nil {
+		logger.V(4).Info("using Swift backend")
+
 		nc.Provider = swift.Kind
 		// https://github.com/restic/restic/blob/master/src/restic/backend/swift/config.go
 		for _, val := range []struct {

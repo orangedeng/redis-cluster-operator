@@ -140,7 +140,7 @@ func persistentClaim(cluster *redisv1alpha1.DistributedRedisCluster, labels map[
 }
 
 func ClusterStatefulSetName(clusterName string, i int) string {
-	return fmt.Sprintf("drc-%s-%d", clusterName, i)
+	return fmt.Sprintf("%s-%d", clusterName, i)
 }
 
 func ClusterHeadlessSvcName(name string, i int) string {
