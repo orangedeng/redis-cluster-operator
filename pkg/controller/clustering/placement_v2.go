@@ -111,6 +111,7 @@ func (c *Ctx) PlaceSlaves() error {
 		master := c.newMastersBySts[ssName]
 		for _, node := range nodes {
 			if node.IP == master.IP {
+				c.log.V(4).Info("current node is master node skip place slaves", "node ip", node.IP)
 				continue
 			}
 			if node.NodeName != master.NodeName {
@@ -124,6 +125,8 @@ func (c *Ctx) PlaceSlaves() error {
 				}
 				continue
 			}
+			c.log.V(4).Info("current node is slave", "current node ip", node.IP, "master node ip", master.IP, "master id", master.ID)
+
 			c.slavesByMaster[master.ID] = append(c.slavesByMaster[master.ID], node)
 		}
 	}
