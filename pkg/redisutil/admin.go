@@ -128,10 +128,8 @@ func (a *Admin) GetClusterInfos() (*ClusterInfos, error) {
 			clusterErr.errs[addr] = err
 			continue
 		}
-		if nodeinfos.Node != nil && nodeinfos.Node.IPPort() == addr {
+		if nodeinfos.Node != nil {
 			infos.Infos[addr] = nodeinfos
-		} else {
-			a.log.Info("bad node info retrieved from", "addr", addr)
 		}
 	}
 
@@ -201,13 +199,14 @@ func (a *Admin) clusterKnowNodes(c IClient, addr string) (int, error) {
 
 // AttachSlaveToMaster attach a slave to a master node
 func (a *Admin) AttachSlaveToMaster(slave *Node, masterID string) error {
-	c, err := a.Connections().Get(slave.IPPort())
+	connectionAddr := slave.ConnectionIPPort()
+	c, err := a.Connections().Get(connectionAddr)
 	if err != nil {
 		return err
 	}
 
 	resp := c.Cmd("CLUSTER", "REPLICATE", masterID)
-	if err := a.Connections().ValidateResp(resp, slave.IPPort(), "unable to run command REPLICATE"); err != nil {
+	if err := a.Connections().ValidateResp(resp, connectionAddr, "unable to run command REPLICATE"); err != nil {
 		return err
 	}
 

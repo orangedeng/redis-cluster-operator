@@ -124,20 +124,20 @@ func computeReshardTable(src redisutil.Nodes, numSlots int) []*MovedNode {
 }
 
 func (c *Ctx) moveSlot(source *MovedNode, target *redisutil.Node, admin redisutil.IAdmin) error {
-	if err := admin.SetSlot(target.IPPort(), "IMPORTING", source.Slot, target.ID); err != nil {
+	if err := admin.SetSlot(target.ConnectionIPPort(), "IMPORTING", source.Slot, target.ID); err != nil {
 		return err
 	}
-	if err := admin.SetSlot(source.Source.IPPort(), "MIGRATING", source.Slot, source.Source.ID); err != nil {
+	if err := admin.SetSlot(source.Source.ConnectionIPPort(), "MIGRATING", source.Slot, source.Source.ID); err != nil {
 		return err
 	}
-	if _, err := admin.MigrateKeysInSlot(source.Source.IPPort(), target, source.Slot, 10, 30000, true); err != nil {
+	if _, err := admin.MigrateKeysInSlot(source.Source.ConnectionIPPort(), target, source.Slot, 10, 30000, true); err != nil {
 		return err
 	}
-	if err := admin.SetSlot(target.IPPort(), "NODE", source.Slot, target.ID); err != nil {
-		c.log.Error(err, "SET NODE", "node", target.IPPort())
+	if err := admin.SetSlot(target.ConnectionIPPort(), "NODE", source.Slot, target.ID); err != nil {
+		c.log.Error(err, "SET NODE", "node", target.ConnectionIPPort())
 	}
-	if err := admin.SetSlot(source.Source.IPPort(), "NODE", source.Slot, target.ID); err != nil {
-		c.log.Error(err, "SET NODE", "node", source.Source.IPPort())
+	if err := admin.SetSlot(source.Source.ConnectionIPPort(), "NODE", source.Slot, target.ID); err != nil {
+		c.log.Error(err, "SET NODE", "node", source.Source.ConnectionIPPort())
 	}
 	source.Source.Slots = redisutil.RemoveSlot(source.Source.Slots, source.Slot)
 	return nil
@@ -162,7 +162,7 @@ func (c *Ctx) AllocSlots(admin redisutil.IAdmin, newMasterNodes redisutil.Nodes)
 		node.Slots = redisutil.BuildSlotSlice(redisutil.Slot(first), redisutil.Slot(last))
 		first = last + 1
 		cursor += slotsPerNode
-		if err := admin.AddSlots(node.IPPort(), node.Slots); err != nil {
+		if err := admin.AddSlots(node.ConnectionIPPort(), node.Slots); err != nil {
 			return err
 		}
 	}

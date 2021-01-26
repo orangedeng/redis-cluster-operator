@@ -63,6 +63,7 @@ type Node struct {
 
 	NodeName    string
 	PodName     string
+	PodIP       string
 	StatefulSet string
 }
 
@@ -149,6 +150,11 @@ func (n *Node) String() string {
 // IPPort returns join Ip Port string
 func (n *Node) IPPort() string {
 	return net.JoinHostPort(n.IP, n.Port)
+}
+
+// IPPort returns connection Ip Port string
+func (n *Node) ConnectionIPPort() string {
+	return net.JoinHostPort(n.PodIP, n.Port)
 }
 
 // GetNodesByFunc returns first node found by the FindNodeFunc

@@ -120,7 +120,7 @@ func (r *ReconcileRedisClusterBackup) create(reqLogger logr.Logger, backup *redi
 	}
 
 	if backup.Spec.Local == nil {
-		if err := osm.CheckBucketAccess(r.client, backup.Spec.Backend, backup.Namespace); err != nil {
+		if err := osm.CheckBucketAccess(r.client, backup.Spec.Backend, backup.Namespace, reqLogger); err != nil {
 			r.markAsFailedBackup(backup, err.Error())
 			r.recorder.Event(
 				backup,
