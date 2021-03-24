@@ -125,10 +125,10 @@ func DecodeNodeInfos(input *string, addr string, log logr.Logger) *NodeInfos {
 
 			if strings.HasPrefix(values[2], "myself") {
 				infos.Node = node
-				log.V(7).Info("getting node info for node", "node", node)
+				log.V(7).Info("getting node info for node", "addr", addr, "node", node)
 			} else {
 				infos.Friends = append(infos.Friends, node)
-				log.V(7).Info("adding node to slice", "node", node)
+				log.V(7).Info("adding node to slice", "addr", addr, "node", node)
 			}
 		}
 	}

@@ -156,6 +156,7 @@ func (a *Admin) getInfos(c IClient, addr string) (*NodeInfos, error) {
 		return nil, fmt.Errorf("wrong format from CLUSTER NODES: %v", err)
 	}
 
+	a.log.V(7).Info("cluster nodes response", "addr", addr, "raw", raw)
 	nodeInfos := DecodeNodeInfos(&raw, addr, a.log)
 
 	return nodeInfos, nil
