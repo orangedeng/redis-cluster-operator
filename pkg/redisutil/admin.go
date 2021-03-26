@@ -120,7 +120,7 @@ func (a *Admin) GetClusterInfos() (*ClusterInfos, error) {
 	clusterErr := NewClusterInfosError()
 
 	for addr, c := range a.Connections().GetAll() {
-		nodeinfos, err := a.getInfos(c, addr)
+		nodeInfos, err := a.getInfos(c, addr)
 		if err != nil {
 			a.log.WithValues("err", err).Info("get redis info failed")
 			infos.Status = ClusterInfosPartial
@@ -128,8 +128,9 @@ func (a *Admin) GetClusterInfos() (*ClusterInfos, error) {
 			clusterErr.errs[addr] = err
 			continue
 		}
-		if nodeinfos.Node != nil {
-			infos.Infos[addr] = nodeinfos
+
+		if nodeInfos.Node != nil {
+			infos.Infos[addr] = nodeInfos
 		}
 	}
 

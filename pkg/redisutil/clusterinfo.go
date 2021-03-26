@@ -150,10 +150,14 @@ func (c *ClusterInfos) ComputeStatus(log logr.Logger) bool {
 	consolidatedView := c.GetNodes().SortByFunc(LessByID)
 	consolidatedSignature := getConfigSignature(consolidatedView)
 	log.V(7).Info("consolidated view", "consolidatedSignature:\n", consolidatedSignature)
-	for addr, nodeinfos := range c.Infos {
-		nodesView := append(nodeinfos.Friends, nodeinfos.Node).SortByFunc(LessByID)
+	infos := c.Infos
+	for addr, ni := range infos {
+		nodeInfos := ni
+		node := nodeInfos.Node
+		friends := nodeInfos.Friends
+		nodesView := append(friends, node).SortByFunc(LessByID)
 		nodeSignature := getConfigSignature(nodesView)
-		log.V(7).Info(fmt.Sprintf("node view from %s (ID: %s):\n%s", addr, nodeinfos.Node.ID, nodeSignature))
+		log.V(7).Info(fmt.Sprintf("node view from %s (ID: %s):\n%s", addr, nodeInfos.Node.ID, nodeSignature))
 		if !reflect.DeepEqual(consolidatedSignature, nodeSignature) {
 			log.V(4).Info("temporary inconsistency between nodes is possible. If the following inconsistency message persists for more than 20 mins, any cluster operation (scale, rolling update) should be avoided before the message is gone")
 			log.V(4).Info(fmt.Sprintf("inconsistency from %s: \n%s\nVS\n%s", addr, consolidatedSignature, nodeSignature))
