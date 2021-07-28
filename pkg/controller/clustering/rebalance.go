@@ -100,7 +100,10 @@ func computeReshardTable(src redisutil.Nodes, numSlots int) []*MovedNode {
 		sourceTotSlots += node.TotalSlots()
 	}
 	for idx, node := range sources {
+
 		n := float64(numSlots) / float64(sourceTotSlots) * float64(node.TotalSlots())
+
+		log.V(4).Info("computeReshardTable", "idx", idx, "sourceTotSlots", sourceTotSlots, "nodeTotalSlots", node.TotalSlots())
 
 		if idx == 0 {
 			n = math.Ceil(n)
@@ -109,6 +112,12 @@ func computeReshardTable(src redisutil.Nodes, numSlots int) []*MovedNode {
 		}
 
 		keys := node.Slots
+
+		if float64(len(keys)) < n {
+			n = float64(len(keys))
+		}
+
+		log.V(4).Info("computeReshardTable", "calculate n", n, "keys length", len(node.Slots))
 
 		for i := 0; i < int(n); i++ {
 			if len(moved) < numSlots {
