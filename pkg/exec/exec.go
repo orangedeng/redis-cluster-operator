@@ -17,6 +17,9 @@ import (
 type IExec interface {
 	// ExecCommandInPodSet exec cmd in pod set.
 	ExecCommandInPodSet(podSet []*corev1.Pod, cmd ...string) error
+	ExecCommandInContainer(namespace, podName, containerName string, cmd ...string) (string, error)
+	ExecCommandInContainerWithFullOutput(namespace, podName, containerName string, cmd ...string) (string, string, error)
+	ExecWithOptions(options ExecOptions) (string, string, error)
 }
 
 type remoteExec struct {
